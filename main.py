@@ -13,7 +13,7 @@ def main(query):
     videos = get_videos_info(query)
     videos_sorted = sorted(videos, key=lambda vid: int(vid["view_count"]), reverse=True)
 
-    table = Table(title="Monitor de Tendências)", show_lines=True)
+    table = Table(title="Monitor de Tendências", show_lines=True)
 
     table.add_column('Título', width=50)
     table.add_column('Canal', width=20)
