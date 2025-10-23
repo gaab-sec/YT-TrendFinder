@@ -1,12 +1,39 @@
 import os
 import datetime
-import pprint
 
 import googleapiclient.discovery
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.table import Table
+
+def main(query):
+    print(f"Buscando vídeos para: '{query}'...")
+
+    videos = get_videos_info(query)
+    videos_sorted = sorted(videos, key=lambda vid: int(vid["view_count"]), reverse=True)
+
+    table = Table(title="Monitor de Tendências)", show_lines=True)
+
+    table.add_column('Título', width=50)
+    table.add_column('Canal', width=20)
+    table.add_column('Views', justify='right')
+
+    for video in videos_sorted:
+        views_int = int(video['view_count'])
+
+        table.add_row(
+            video['title'],
+            video['channel_title'],
+            f'{views_int:,}'.replace(',', '.')
+        )
+
+    os.system("cls" if os.name == 'nt' else "clear")
+
+    console = Console()
+    console.print(table)
 
 
-def main():
+def get_videos_info(search_query, max_results=10, video_duration="any"):
     # Loading enviroment variables
     load_dotenv()
     api_key = os.getenv('API_KEY')
@@ -21,8 +48,6 @@ def main():
     # Disable OAuthlib's HTTPS verification when running locally.
     # *DO NOT* leave this option enabled in production.
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-   
-    search_query = "automação python"
  
     api_service_name = "youtube"
     api_version = "v3"
@@ -33,34 +58,41 @@ def main():
  
     request = youtube.search().list(
         part="snippet",
-        maxResults=2,
+        maxResults=max_results,
         order="viewCount",
         q=search_query,
         type="video",
-        videoDuration="any",
+        videoDuration=video_duration,
         publishedAfter=published_after
     )
 
-    # response = request.execute()["items"]
-    # videos_info = [video["snippet"] for video in response]
-
     response = request.execute()
-    videos = response["items"]
+    videos_info = [
+        {
+            'id': video["id"]["videoId"],
+            'title': video["snippet"]["title"],
+            'channel_title': video["snippet"]["channelTitle"],
+        }
+        for video in response["items"]
+    ]
 
     videos_id = []
-    for video in videos:
-        videos_id.append(video["id"]["videoId"])
-    
-    print(videos_id)
+    for video in videos_info:
+        videos_id.append(video["id"])
     
     # extract videos statistics
     request = youtube.videos().list(
-        part="snippet,contentDetails,statistics",
+        part="statistics",
         id=videos_id
     )
-    response = request.execute()
+    statistics = request.execute()["items"]
+    view_count = [video_statistic["statistics"]["viewCount"] for video_statistic in statistics]
 
+    # add view count to videos info
+    for index in range(len(view_count)):
+        videos_info[index]["view_count"] = view_count[index]
 
+    return videos_info
 
 if __name__ == "__main__":
-    main()
+    main("automação python")
