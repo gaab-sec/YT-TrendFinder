@@ -1,5 +1,6 @@
 import os
 import datetime
+import sys
 
 import googleapiclient.discovery
 from dotenv import load_dotenv
@@ -95,4 +96,8 @@ def get_videos_info(search_query, max_results=10, video_duration="any"):
     return videos_info
 
 if __name__ == "__main__":
-    main("automação python")
+    if len(sys.argv) > 1:
+        query = sys.argv[1]
+        main(query)
+    else:
+        raise "Erro: Você precisa fornecer um termo de busca."
