@@ -16,6 +16,21 @@ API_SERVICE_NAME = "youtube"
 API_VERSION = "v3"
 
 
+def get_youtube_client():
+    if not API_KEY:
+        print("ERRO: A váriavel de ambiente 'API_KEY' não foi definida")
+        print("Crie um arquivo .env e adicione sua chave da API")
+        sys.exit(1)
+    
+    try:
+        client = googleapiclient.discovery.build(
+            API_SERVICE_NAME, API_VERSION, developerKey= API_KEY
+        )
+        return client
+    except Exception as err:
+        print(f"ERRO: Falha ao construi cliente da API: {err}")
+        sys.exit(1)
+
 def main(query):
     print(f"Buscando vídeos para: '{query}'...")
 
@@ -43,22 +58,17 @@ def main(query):
     console.print(table)
 
 
-def get_videos_info(search_query, max_results=10, video_duration="any"):
+def get_videos_info(youtube_client, search_query: str, max_results: int =10, video_duration: str ="any") -> list[dict[str, any]]:
 
+    # calculo data 
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     utc_30days = datetime.timedelta(30)
 
     date_last_month = utc_now - utc_30days
     published_after = date_last_month.isoformat()
- 
-    # Disable OAuthlib's HTTPS verification when running locally.
-    # *DO NOT* leave this option enabled in production.
-    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
- 
-    youtube = googleapiclient.discovery.build(
-        API_SERVICE_NAME, API_VERSION, developerKey = API_KEY)
- 
-    request = youtube.search().list(
+
+
+    request = youtube_client.search().list(
         part="snippet",
         maxResults=max_results,
         order="viewCount",
@@ -82,7 +92,7 @@ def get_videos_info(search_query, max_results=10, video_duration="any"):
     for video in videos_info:
         videos_id.append(video["id"])
     
-    request = youtube.videos().list(
+    request = youtube_client.videos().list(
         part="statistics",
         id=videos_id
     )
