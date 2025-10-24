@@ -32,32 +32,6 @@ def get_youtube_client():
         print(f"ERRO: Falha ao construi cliente da API: {err}")
         sys.exit(1)
 
-def main(query):
-    print(f"Buscando vídeos para: '{query}'...")
-
-    videos = get_videos_info(query)
-    videos_sorted = sorted(videos, key=lambda vid: int(vid["view_count"]), reverse=True)
-
-    table = Table(title="Monitor de Tendências", show_lines=True)
-
-    table.add_column('Título', width=50)
-    table.add_column('Canal', width=20)
-    table.add_column('Views', justify='right')
-
-    for video in videos_sorted:
-        views_int = int(video['view_count'])
-
-        table.add_row(
-            video['title'],
-            video['channel_title'],
-            f'{views_int:,}'.replace(',', '.')
-        )
-
-    os.system("cls" if os.name == 'nt' else "clear")
-
-    console = Console()
-    console.print(table)
-
 
 def get_videos_info(youtube_client, search_query: str, max_results: int =10, video_duration: str ="any") -> list[dict[str, any]]:
 
@@ -78,15 +52,6 @@ def get_videos_info(youtube_client, search_query: str, max_results: int =10, vid
     )
     search_response = search_request.execute()
     
-    # videos_info = [
-    #     {
-    #         'id': video["id"]["videoId"],
-    #         'title': video["snippet"]["title"],
-    #         'channel_title': video["snippet"]["channelTitle"],
-    #     }
-    #     for video in response["items"]
-    # ]
-
     videos_info_dict = {}
     for item in search_response.get("items", []):
         video_id = item["id"]["videoId"]
@@ -114,11 +79,36 @@ def get_videos_info(youtube_client, search_query: str, max_results: int =10, vid
 
     return list(videos_info_dict.values())
 
+def create_and_print_table(videos: list[dict[str, any]], query: str):
+    videos_sorted = sorted(videos, key=lambda vid: vid.get('view_count', 0), reverse=True)
+
+    table = Table(title=f"Monitor de Tendências: {query}", show_lines=True)
+
+    table.add_column('Título', width=50, overflow="fold") # fold: quebra titulos longos ao invés de cortar
+    table.add_column('Canal', width=20)
+    table.add_column('Views', justify='right')
+
+    for video in videos_sorted:
+        views = video.get('view_count')
+        formated_views = f'{views:,}'.replace(',', '.')
+
+        table.add_row(
+            video['title'],
+            video['channel_title'],
+            formated_views
+        )
+    
+    os.system('cls' if os.name == 'nt' else 'clear')
+    console = Console()
+    console.print(table)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 2:
+    if len(sys.argv) < 1:
         print("ERRO: Você precisa fornecer um termo de busca.")
         print("Ex: python main.py 'termo de busca'")
         sys.exit(1)
 
-    query = "".join(sys.argv[1:])
-    main(query)
+    query = "".join(sys.argv[1])
+    # main(query)
+    print(get_videos_info())
