@@ -17,6 +17,31 @@ API_VERSION = "v3"
 DAYS_AGO = 30
 
 
+def main():
+    if len(sys.argv) < 2:
+        print("Erro: Você precisa fornecer um termo de busca.")
+        print("Uso: python seu_script.py \"termo de busca\"")
+        sys.exit(1)
+    query = " ".join(sys.argv[1:])
+
+    # query = ""
+
+    try:
+        youtube_client = get_youtube_client()
+        videos = get_videos_info(youtube_client, query)
+
+        if not videos:
+            return
+        
+        create_and_print_table(videos, query)
+
+    except HttpError as err:
+        print(f"\nERRO: ocorreu um erro na API do YouTube: {err}")
+    except Exception as err:
+        print(f"\nERRO: ocorreu um inesperado: {err}")
+
+
+
 def get_youtube_client():
     if not API_KEY:
         print("ERRO: A váriavel de ambiente 'API_KEY' não foi definida")
@@ -55,7 +80,7 @@ def get_videos_info(youtube_client, search_query: str, max_results: int =10, vid
     videos_info_dict = {}
     for item in search_response.get("items", []):
         video_id = item["id"]["videoId"]
-        videos_info_dict =  {
+        videos_info_dict[video_id] =  {
             'id': video_id,
             'title': item["snippet"]["title"],
             'channel_title': item["snippet"]["channelTitle"],
@@ -79,6 +104,7 @@ def get_videos_info(youtube_client, search_query: str, max_results: int =10, vid
 
     return list(videos_info_dict.values())
 
+
 def create_and_print_table(videos: list[dict[str, any]], query: str):
     videos_sorted = sorted(videos, key=lambda vid: vid.get('view_count', 0), reverse=True)
 
@@ -87,6 +113,9 @@ def create_and_print_table(videos: list[dict[str, any]], query: str):
     table.add_column('Título', width=50, overflow="fold") # fold: quebra titulos longos ao invés de cortar
     table.add_column('Canal', width=20)
     table.add_column('Views', justify='right')
+
+    for video in videos_sorted:
+        print(video["view_count"])
 
     for video in videos_sorted:
         views = video.get('view_count')
@@ -104,11 +133,4 @@ def create_and_print_table(videos: list[dict[str, any]], query: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 1:
-        print("ERRO: Você precisa fornecer um termo de busca.")
-        print("Ex: python main.py 'termo de busca'")
-        sys.exit(1)
-
-    query = "".join(sys.argv[1])
-    # main(query)
-    print(get_videos_info())
+    main()
