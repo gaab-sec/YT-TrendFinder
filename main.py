@@ -66,8 +66,8 @@ def get_videos_info(youtube_client, search_query: str, max_results: int =10, vid
     published_after_date = utc_now - datetime.timedelta(days=DAYS_AGO)
     published_after = published_after_date.isoformat()
 
-
-    request = youtube_client.search().list(
+    # pegar snippets 
+    search_request = youtube_client.search().list(
         part="snippet",
         maxResults=max_results,
         order="viewCount",
@@ -76,32 +76,43 @@ def get_videos_info(youtube_client, search_query: str, max_results: int =10, vid
         videoDuration=video_duration,
         publishedAfter=published_after
     )
-
-    response = request.execute()
-    videos_info = [
-        {
-            'id': video["id"]["videoId"],
-            'title': video["snippet"]["title"],
-            'channel_title': video["snippet"]["channelTitle"],
-        }
-        for video in response["items"]
-    ]
-
-    videos_id = []
-    for video in videos_info:
-        videos_id.append(video["id"])
+    search_response = search_request.execute()
     
-    request = youtube_client.videos().list(
+    # videos_info = [
+    #     {
+    #         'id': video["id"]["videoId"],
+    #         'title': video["snippet"]["title"],
+    #         'channel_title': video["snippet"]["channelTitle"],
+    #     }
+    #     for video in response["items"]
+    # ]
+
+    videos_info_dict = {}
+    for item in search_response.get("items", []):
+        video_id = item["id"]["videoId"]
+        videos_info_dict =  {
+            'id': video_id,
+            'title': item["snippet"]["title"],
+            'channel_title': item["snippet"]["channelTitle"],
+        }
+    video_ids = list(videos_info_dict.keys())
+
+    if not video_ids:
+        print("Nenhum vídeo encontrado")
+        return []
+    
+    # pegar estatísticas 
+    stats_request = youtube_client.videos().list(
         part="statistics",
-        id=videos_id
+        id=",".join(video_ids)
     )
-    statistics = request.execute()["items"]
-    view_count = [video_statistic["statistics"]["viewCount"] for video_statistic in statistics]
+    stats_response = stats_request.execute()
 
-    for index in range(len(view_count)):
-        videos_info[index]["view_count"] = view_count[index]
+    for item in stats_response.get("items", []):
+        video_id = item["id"]
+        videos_info_dict[video_id]["view_count"] = int(item["statistics"].get("viewCount", 0))
 
-    return videos_info
+    return list(videos_info_dict.values())
 
 if __name__ == "__main__":
     if len(sys.argv) > 2:
