@@ -14,6 +14,7 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 API_SERVICE_NAME = "youtube"
 API_VERSION = "v3"
+DAYS_AGO = 30
 
 
 def get_youtube_client():
@@ -62,10 +63,8 @@ def get_videos_info(youtube_client, search_query: str, max_results: int =10, vid
 
     # calculo data 
     utc_now = datetime.datetime.now(datetime.timezone.utc)
-    utc_30days = datetime.timedelta(30)
-
-    date_last_month = utc_now - utc_30days
-    published_after = date_last_month.isoformat()
+    published_after_date = utc_now - datetime.timedelta(days=DAYS_AGO)
+    published_after = published_after_date.isoformat()
 
 
     request = youtube_client.search().list(
